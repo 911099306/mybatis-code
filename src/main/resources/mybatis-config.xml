@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+    <settings>
+         <setting name="cacheEnabled" value="true"/>
+    </settings>
+
+
+    <typeAliases>
+        <typeAlias type="com.baizhiedu.entity.User" alias="User"/>
+        <typeAlias type="com.baizhiedu.entity.Account" alias="Account"/>
+    </typeAliases>
+
+
+    <environments default="default">
+        <environment id="default">
+            <transactionManager type="JDBC"></transactionManager>
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.jdbc.Driver"></property>
+                <property name="url" value="jdbc:mysql://localhost:3306/suns?useSSL=false"></property>
+                <property name="username" value="root"></property>
+                <property name="password" value="123456"></property>
+            </dataSource>
+        </environment>
+
+    </environments>
+
+    <mappers>
+        <!--<package name=""-->
+        <mapper resource="UserDAOMapper.xml"/>
+        <mapper resource="AccountDAOMapper.xml"/>
+    </mappers>
+
+
+</configuration>
