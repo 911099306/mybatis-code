@@ -2,9 +2,9 @@
 <!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
 <configuration>
 
-    <!-- <settings>
+    <settings>
          <setting name="cacheEnabled" value="true"/>
-     </settings>-->
+    </settings>
 
 
     <typeAliases>
@@ -13,38 +13,29 @@
     </typeAliases>
 
 
-    <plugins>
-        <!--<plugin interceptor="com.baizhiedu.plugins.MyMybatisInterceptor">
-            <property name="test" value="111111"/>
-        </plugin>-->
-        <!--<plugin interceptor="com.baizhiedu.plugins.MyMybatisInterceptor2"/>-->
-        <!--<plugin interceptor="com.baizhiedu.plugins.MyMybatisInterceptor3"/>-->
-      <!--  <plugin interceptor="com.baizhiedu.plugins.PageHelperInterceptor1">
-            <property name="queryMethodPrefix" value="query"/>
-            <property name="queryMethodSuffix" value="ByPage"/>
-        </plugin>-->
-        <plugin interceptor="com.baizhiedu.plugins.LockInterceptor"/>
-    </plugins>
-
+    <!--                default =‘’  当同时配置多个数据源的时候，这里的default配置生效的配置 -->
+    <!-- 默认与不默认的本质区别？  可以在每一个mapper.xml文件中指定每一个sql访问的数据库源是哪里-->
     <environments default="default">
+
         <environment id="default">
-            <transactionManager type="JDBC"></transactionManager>
+            <transactionManager type="JDBC"/>
             <dataSource type="POOLED">
-                <property name="driver" value="com.mysql.jdbc.Driver"></property>
-                <property name="url" value="jdbc:mysql://localhost:3306/suns?useSSL=false"></property>
-                <property name="username" value="root"></property>
-                <property name="password" value="123456"></property>
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/suns?useSSL=false"/>
+                <property name="username" value="root"/>
+                <property name="password" value="123456"/>
             </dataSource>
         </environment>
-        <!--    <environment id="oracle">
-                <transactionManager type="JDBC"></transactionManager>
-                <dataSource type="POOLED">
-                    <property name="driver" value="oracle.jdbc.OracleDriver"></property>
-                    <property name="url" value="jdbc:oracle:thin:@localhost:1521:xe"></property>
-                    <property name="username" value="hr"/>
-                    <property name="password" value="hr"/>
-                </dataSource>
-            </environment>-->
+
+        <environment id="tencentYun">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="oracle.jdbc.OracleDriver"/>
+                <property name="url" value="jdbc:mysql://124.220.78.148:13306/suns?useSSL=false"/>
+                <property name="username" value="root"/>
+                <property name="password" value="123456"/>
+            </dataSource>
+        </environment>
     </environments>
 
     <mappers>

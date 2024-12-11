@@ -31,14 +31,13 @@
      </dependency>
    2. 准备配置文件
       a. 基本配置文件 mybatis-config.xml
-         1. 数据源的设置 environments
+         1. 数据源的设置 <environments/>
          2. 类型别名
          3. mapper文件的注册
       b. Mapper文件
          1. DAO规定方法的实现 --> SQL语句 
    3. 初始化配置 
-      mybatis-config.xml
-      配置 environment
+      在mybatis-config.xml文件中配置 environment
 3. 开发步骤 7步
    1. entity
    2. 类型别名
@@ -48,7 +47,45 @@
    6. Mapper文件的注册
    7. API编程
 ```
+配置文件  mybatis-config.xml
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
 
+    <settings>
+         <setting name="cacheEnabled" value="true"/>
+    </settings>
+
+
+    <typeAliases>
+        <typeAlias type="com.baizhiedu.entity.User" alias="User"/>
+        <typeAlias type="com.baizhiedu.entity.Account" alias="Account"/>
+    </typeAliases>
+
+
+    <environments default="default">
+        <environment id="default">
+            <transactionManager type="JDBC"></transactionManager>
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.jdbc.Driver"></property>
+                <property name="url" value="jdbc:mysql://localhost:3306/suns?useSSL=false"></property>
+                <property name="username" value="root"></property>
+                <property name="password" value="123456"></property>
+            </dataSource>
+        </environment>
+
+    </environments>
+
+    <mappers>
+        <!--<package name=""-->
+        <mapper resource="UserDAOMapper.xml"/>
+        <mapper resource="AccountDAOMapper.xml"/>
+    </mappers>
+
+
+</configuration>
+```
 - 核心代码分析
 
 ```plain
@@ -56,22 +93,20 @@ InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
 SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
 SqlSession sqlSession = sqlSessionFactory.openSession();
 
+第一种：
+UserDAO userDAO = sqlSession.getMapper(UserDAO.class);
+List<User> users = userDAO.queryAllUsers();
+
+第二种：
+List<User> users = sqlSession.selectList("com.baizhiedu.dao.UserDAO.queryAllUsers");
+
+--- 
+
 两种方式功能等价 
-实现效果 区别 
   
 那种方式好？第一种方式好 表达概念更清晰 
           第一种开发，本质上就是对第二种开发的封装。（代理设计模式）
   
-UserDAO userDAO = sqlSession.getMapper(UserDAO.class);
-List<User> users = userDAO.queryAllUsers();
-
-List<User> users = sqlSession.selectList("com.baizhiedu.dao.UserDAO.queryAllUsers");
-
-String name = "huxz";
-
-public class User{
-  private String name = "huxz";
-}
 ```
 
 #### 第二章、Mybaits的核心对象
