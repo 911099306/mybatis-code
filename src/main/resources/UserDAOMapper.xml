@@ -26,32 +26,33 @@
 
    <!-- <cache type="org.mybatis.caches.redis.RedisCache"/>-->
 
-    <cache/>
+    <!-- <cache/> -->
 
 
-    <insert id="save" parameterType="User">
-        insert into t_user (name) values (#{name})
-    </insert>
+    <!-- <insert id="save" parameterType="User"> -->
+    <!--     insert into t_user (name) values (#{name}) -->
+    <!-- </insert> -->
 
-    <!--  databaseId 指定访问数据哭 -->
-    <select id="queryAll" resultType="User" databaseId="tencentYun">
-        select id,name from t_user
-    </select>
+    <!-- &lt;!&ndash;  databaseId 指定访问数据哭 &ndash;&gt; -->
+    <!-- <select id="queryAll" resultType="User" databaseId="tencentYun"> -->
+    <!--     select id,name from t_user -->
+    <!-- </select> -->
 
-    <select id="queryAllUsersByPage" resultType="User" useCache="true">
-        select id,name from t_user
-    </select>
+    <!-- <select id="queryAllUsersByPage" resultType="User" useCache="true"> -->
+    <!--     select id,name from t_user -->
+    <!-- </select> -->
 
-    <select id="queryUserById" resultType="User" useCache="true">
-        select id,name from t_user where id = #{id}
-    </select>
+    <!-- <select id="queryUserById" resultType="User" useCache="true"> -->
+    <!--     select id,name from t_user where id = #{id} -->
+    <!-- </select> -->
+
     <select id="queryAllUsers" resultType="com.baizhiedu.entity.User">
         select * from t_user
     </select>
 
-    <update id="update" parameterType="User">
-          update t_user set name=#{name} where id=#{id}
-    </update>
+    <!-- <update id="update" parameterType="User"> -->
+    <!--       update t_user set name=#{name} where id=#{id} -->
+    <!-- </update> -->
 
 
 

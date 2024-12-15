@@ -15,9 +15,12 @@ public class MyMapperProxy implements InvocationHandler {
         this.daoClass = daoClass;
     }
 
+
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         System.out.println(daoClass.getName() + "." + method.getName());
+        // namespace.id
         return sqlSession.selectList(daoClass.getName() + "." + method.getName());
+
     }
 }
