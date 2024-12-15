@@ -3,18 +3,19 @@ package com.baizhiedu.cache;
 
 import org.apache.ibatis.cache.Cache;
 
+import java.sql.Time;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- *    1. 存数据 (基本变量 数组 List Set Map ) 存多个数据
- *    2. key value
+ * 1. 存数据 (基本变量 数组 List Set Map ) 存多个数据
+ * 2. key value
  */
 public class MyMybatisCache implements Cache {
 
-    private Map<Object,Object> internalCache  = new HashMap();
+    private final HashMap<Object, Object> internalCache = new HashMap<>();
 
     @Override
     public String getId() {
@@ -23,12 +24,12 @@ public class MyMybatisCache implements Cache {
 
     @Override
     public void putObject(Object key, Object value) {
-          internalCache.put(key,value);
+        internalCache.put(key, value);
     }
 
     @Override
     public Object getObject(Object key) {
-        return internalCache.get(key);
+        return internalCache.get(key) ;
     }
 
     @Override
@@ -48,6 +49,6 @@ public class MyMybatisCache implements Cache {
 
     @Override
     public ReadWriteLock getReadWriteLock() {
-        return new ReentrantReadWriteLock();
+        return null;
     }
 }

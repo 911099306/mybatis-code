@@ -584,25 +584,154 @@ SqlSession sqlSession = sqlSessionFactory.openSession();
 1. 程序 与 数据库间搭建一个桥梁，能够把数据存储在内存中，提高用户的查询效率，尽量避免数据库的硬盘查询。
 2. 在查询过程上加入一层，*效率肯定会有所影响*，但是如果是第二次查询曾经查询过的数据，可以极大的提升效率。**缓存不是为了优化第一次查询，而是提升后续多次的查询效率**
 
-### 缓存分类
+## 缓存分类
 
-- ORM框架集成缓存
-  - Hibernate、MyBatis、JDO（Hive）...
+- ORM框架集成缓存：Hibernate、MyBatis、JDO（Hive）...
+  - 优点：基于本地内存，**速度快** 
+  - 缺点：内存有限
 
-- 第三方中间件充当缓存
-  - memCache、Redis、自研的方式...
+- 第三方中间件充当缓存 （代理设计模式）：memCache、Redis、自研的方式...  
+  - 优点： 内存大
+  - 缺点：网络开销大，但是内网使用可以接受
 
+### 第三方组件充当缓存基本原理实现
 
+```java
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Cache {
+    String eviction();
+}
 
+```
 
+```java
+public interface ProductDAO {
+    
+    public void save();
 
+    public Product queryProductById(int id);
 
+    @Cache(eviction = "testCache")
+    public List<Product> queryAllProducts();
+}
+```
 
+```java
 
+public class ProductDAOImpl implements ProductDAO {
+    @Override
+    public void save() {
+        System.out.println("jdbc 的方式操作 数据库 完成 插入的操作");
+    }
 
+    @Override
+    public Product queryProductById(int id) {
+        System.out.println("jdbc 的方式基于ID 进行查询 " + id);
+        return new Product();
+    }
 
+    @Override
+    public List<Product> queryAllProducts() {
+        System.out.println("jdbc 的方式进行全表查询 ");
+        return new ArrayList();
+    }
+}
+```
 
+动态代理实现，先查询缓存，缓存不存在在访问JDBC
 
+```java
+@Test
+public void test() {
+
+        ProductDAO productDAO = new ProductDAOImpl();
+        ProductDAO productDAOProxy =  (ProductDAO) Proxy.newProxyInstance(testMybatis2.class.getClassLoader(), new Class[]{ProductDAO.class}, new InvocationHandler() {
+            @Override
+            public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                // 方法仅针对 query 类的方法进行缓存处理，否则，直接运行
+                // 实现一： 对所有query开头的进行缓存处理
+                // if (method.getName().startsWith("query")) {
+                //     System.out.println("连接redis, 查询数据是否存在，若存在则直接返回，return data ");
+                //     return method.invoke(productDAO, args);
+                // }
+                // 实现二： 基于注解标注需要缓存的方法
+                Cache cache = method.getAnnotation(Cache.class);
+                if (cache != null) {
+                    String eviction = cache.eviction();
+                    System.out.println("eviction = " + eviction);
+                    System.out.println("连接redis, 查询数据是否存在，若存在则直接返回，return data ");
+                        return method.invoke(productDAO, args);
+                }
+
+                // 非查询类的方法，直接运行，无须缓存操作
+                return method.invoke(productDAO, args);
+            }
+        });
+        productDAOProxy.save();
+        System.out.println("------------------------------");
+        productDAOProxy.queryProductById(10);
+        System.out.println("------------------------------");
+        productDAOProxy.queryAllProducts();
+    }
+```
+
+## MyBatis 集成缓存（ORM）
+
+**Cache interface**：MyBatis 对缓存的封装（对方法、功能封装为接口）
+
+![image-20241215185322010](readeMe/image-20241215185322010.png)
+
+MyBatis是通过 **key-value** 的结构进行存储，类似于Map结构
+
+### CaChe 实现类
+
+MyBatis中Cache的实现方式
+
+![image-20241215195011077](readeMe/image-20241215195011077.png)
+
+- impl包 核心实现类，就一个 （真正的实现类）
+
+  - PerpetualCache：HashMap
+
+    ```java
+    private Map<Object, Object> cache = new HashMap<Object, Object>();
+    
+    // 唯一ID， 在创建对象的时候手动指定。
+    public PerpetualCache(String id) {
+        this.id = id;
+    }
+    
+    ```
+
+- decorators包，多个，装饰器模式实现（装饰器模式，为目标增加功能）
+
+  为了增强PerpetualCache，使其功能更加强大
+
+  - 数据换出：将新的数据占据不常用的旧的数据的位置
+    - 先入先出：FifoCache
+    - LRU：LruCache（默认的功能）
+  - 日志功能：LoggingCache，增加日志功能
+  - 阻塞功能：BlockingCache，同一时间只有一个线程到缓存中查找对象数据
+  - 自动刷新：ScheduledCache，设置时间间隔清空缓存，解决脏数据
+  - 序列话：SerializedCache 自动完成kv的序列话、反序列化
+  - 事务功能：**TransactionalCache**，只有在实务操作成功后，才会将对应数据加入缓存
+
+#### 装饰器模式 VS 代理模式
+
+MyBatis 中大量使用装饰器设计模式，作用：为目标扩展功能
+
+代理设计模式，作用：为目标（原始对象）增加功能（扩展功能）
+
+装饰器和代理设计模式的类图都是一样的。
+
+区别：
+
+- 装饰器 ：增加核心功能，和被装饰对象做的是同一件事
+
+- 代理     ：增加额外功能，和被代理对象做的不是同一件事
+
+  ​			   无中生有，只有接口，凭空创建其实现类
 
 
 

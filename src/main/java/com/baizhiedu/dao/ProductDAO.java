@@ -8,6 +8,6 @@ public interface ProductDAO {
 
     public Product queryProductById(int id);
 
-    @Cache
+    @Cache(eviction = "testCache")
     public List<Product> queryAllProducts();
 }
