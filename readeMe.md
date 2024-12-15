@@ -1,8 +1,8 @@
-# MyBatis 源码学习
 
-## 第一章、回顾
 
-### 1. 课程中工具的版本
+# 第一章：回顾
+
+## 1. 课程中工具的版本
 
 ```plain
 1. JDK8
@@ -12,7 +12,7 @@
    Mybatis 3.4.6
 ```
 
-### 2. Mybatis开发的简单回顾
+## 2. Mybatis开发的简单回顾
 
 ```plain
 1. Mybatis做什么？
@@ -47,7 +47,7 @@
    6. Mapper文件的注册
    7. API编程
 ```
-#### 配置文件  mybatis-config.xml
+### 配置文件  mybatis-config.xml
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
@@ -87,7 +87,7 @@
 
 </configuration>
 ```
-#### 核心代码分析
+### 核心代码分析
 
 ```plain
 InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
@@ -110,7 +110,14 @@ List<User> users = sqlSession.selectList("com.baizhiedu.dao.UserDAO.queryAllUser
   
 ```
 
-## 第二章、Mybaits的核心对象
+----
+
+
+
+
+
+# 第二章：MyBaits的核心对象
+
 mybatis 是什么
 1. 是通过sqlSession对JDBC进行封装 
    1. JDBC的connection、statement、ResultSet
@@ -118,18 +125,18 @@ mybatis 是什么
 3. mybatis-config.xml 配置信息
 4. Mapper.xml 基于此生成dao文件
 ![img.png](img.png)
-### Mybatis的核心对象及其作用
+## Mybatis的核心对象及其作用
 1. 数据存储类对象
 2. 操作类对象
 
-#### 数据存储类对象
+### 数据存储类对象
 
 **概念**：在Java中（JVM)对Mybatis相关的配置信息进行封装，有如下两种配置文件：
 
 1. mybatis-config.xml  ----> Configuration.class
 2. XXXDAOMapper.xml    ----> MappedStatement(形象的认知，不准确)
 
-#####  Configuration.class
+####  Configuration.class
 
 ```
    mybatis-config.xml ----> Configuration.class
@@ -171,7 +178,7 @@ Configuration.class类 封装 mybatis-config.xml 内容
 
 
 
-##### MappedStatement.class
+#### MappedStatement.class
 
 概念：封装Mapper文件中的一个个的配置标签（增删改查的标签，insert、delete、update等）
 
@@ -194,11 +201,11 @@ XXXDAOMapper.xml ----> MappedStatement(形象的认知，不准确)
 
 ![img](https://cdn.nlark.com/yuque/0/2024/png/33585168/1733922950572-173fd220-aac9-4cf8-ade9-4e945928cb11.png)
 
-##### 小结
+#### 小结
 
 ![image-20241212005421080](readeMe/image-20241212005421080.png)
 
-#### 操作类对象 sqlSession
+### 操作类对象 sqlSession
 
 操作对象(sqlSession)主要以下几类
 
@@ -211,7 +218,7 @@ XXXDAOMapper.xml ----> MappedStatement(形象的认知，不准确)
 
 ![image-20241212162613942](readeMe/image-20241212162613942.png)
 
-##### Excutor 接口
+#### Excutor 接口
 
 Excutor 是Mybatis中处理功能的**核心**: 
 
@@ -246,7 +253,7 @@ Excutor 实现类：
 
 
 
-##### StatmentHandler 接口
+#### StatmentHandler 接口
 
 **概念：**StatementHandler是Mybatis封装了JDBC Statement，真正Mybatis进行数据库访问操作的**核心**
 
@@ -268,20 +275,20 @@ Excutor 实现类：
 
 
 
-##### ParameterHandler.class
+#### ParameterHandler.class
 
 **目的**：参数处理 ，即：Mybatis参数 ---> JDBC 相关的参数 
-             @Param ---> #、{} --- >  ?
+             @Param ---> #{} --- >  ?
 
 ​			
 
-##### ResultSetHandler.class
+#### ResultSetHandler.class
 
 **目的：**对JDBC中查询结果集 ResultSet 进行封装 
 
 ![image-20241212172424415](readeMe/image-20241212172424415.png)
 
-##### TypeHandler.class
+#### TypeHandler.class
 
 Java程序里的类型和数据库字段的类型进行相互映射转化
 
@@ -295,9 +302,11 @@ Java类型   数据库类型
 
 
 
-# 2. Mybatis的核心对象 如何与SqlSession建立的联系？
+### 小结： 
 
-**Mybatis源码中的这些核心对象 在 SqlSession调用对应功能时候建立联系** 
+#### Mybatis的核心对象 如何与SqlSession建立的联系？：
+
+Mybatis源码中的这些核心对象 在 SqlSession调用对应功能时候建立联系 
 
 ```SqlSession.insert()
 DefaultSqlSession
@@ -410,3 +419,286 @@ cacheMapperMethod 对原始method 进行包装了一层。MapperMethod，内部�
 ```
 
 ![image-20241212190934531](readeMe/image-20241212190934531.png)
+
+----
+
+
+
+
+
+
+
+# 第三章：MyBaits的核心运行原理
+
+## **核心关注点**
+
+```java
+InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+SqlSession sqlSession = sqlSessionFactory.openSession();
+```
+
+### IO读取配置文件
+
+```java
+InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+```
+
+**解释：**通过IO打开输入流，获取**mybatis-config.xml** 以及 **xxxMapper.xml** 文件信息
+
+![image-20241215152235575](readeMe/image-20241215152235575.png)
+
+mybatis-config.xml标签内，配置了mapper文件的名称以及路径信息，会同步进行读取xxxMapper.xml文件。
+
+读取XML文件后，将其映射为对象 **Configuration** 对象，这一过程就是OXM：Object XML Mapper
+
+
+
+#### XOM过程
+
+![image-20241215152519934](readeMe/image-20241215152519934.png)
+
+Java：XML文件解析后，读取xml相关内容，获得标签的内容和后，封装为Java对象
+
+XML解析方式：
+
+1. **DOM**
+2. **SAX**
+3. **XPath**（mybatis）
+
+MyBatis在解析的时候，创建一个**XpathParser**对象，对xml进行解析后，每一个标签初步封装为 **XNode** 对象，
+
+**XPathparser**：概念：读取、分析XML文件
+
+```java
+XPathParser xpathParsewr = new XPathParser(inputStream);
+ List<XNode> xNodes = xpathParser.evalNodes("/xxx")  ‘/xxx 标签的名字’，expressions 读取范围，一个规则语法
+     取后封装为XNode，进一步通过XNode 获取标签的属性、内容等信息
+```
+
+**XNode**：将xml文件的每一个标签，都封装为XNode对象
+
+![image-20241215153604852](readeMe/image-20241215153604852.png)
+
+
+
+```java
+@Test
+public void testXMLParser() throws IOException {
+    // Reader reader = Resources.getResourceAsReader("users.xml");  两种相同的写法
+    InputStream reader = Resources.getResourceAsStream("users.xml");
+
+    XPathParser xPathParser = new XPathParser(reader);
+    List<XNode> xNodes = xPathParser.evalNodes("/users/*");  //   "/users/* 标签下的所有内容"
+
+    // users.xml里有两个user标签，所以size是2
+    System.out.println("xNodes.size : " + xNodes.size());
+
+    // 根据xml文件，封装User对象
+    List<com.baizhiedu.xml.User> users = new LinkedList<>();
+    for (XNode xNode : xNodes) {
+        // name 、 password 封装的xNode
+        List<XNode> children = xNode.getChildren();
+
+        com.baizhiedu.xml.User user = new com.baizhiedu.xml.User();
+        user.setName(children.get(0).getStringBody());
+        user.setPassword(children.get(1).getStringBody());
+        users.add(user);
+    }
+    System.out.println(users);
+}
+```
+
+![image-20241215154822201](readeMe/image-20241215154822201.png)
+
+
+
+### 解析xml文件信息
+
+```java
+// 此处的build方法，其实就是等同于上面的创建XPathParser对象 new XPathParser(reader);
+SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+```
+
+**build()作用**：
+
+1. 解析mybatis-config.xml文件，生成**Configuration**、**MappedStatement**对象，并将ms放入configuration中
+
+   build() -> parseConfiguration(parser.evalNode("/configuration"));
+
+2. 创建 **sqlSessionFactory**对象，最终生成sqlSession对象
+
+#### 生成configuration和ms
+
+![image-20241215161614623](readeMe/image-20241215161614623.png)
+
+![image-20241215163305088](readeMe/image-20241215163305088.png)
+
+![image-20241215163201347](readeMe/image-20241215163201347.png)
+
+![image-20241215163538739](readeMe/image-20241215163538739.png)
+
+ 最终便会生成MappedStatement对象：
+
+![image-20241215163750931](readeMe/image-20241215163750931.png)
+
+#### 创建sqlSessionFactory
+
+![image-20241215164824661](readeMe/image-20241215164824661.png)
+
+
+
+### SqlSession
+
+```java
+SqlSession sqlSession = sqlSessionFactory.openSession();
+```
+
+1. 创建DB链接
+2. 生成Executor核心操作类对象
+
+![image-20241215165227110](readeMe/image-20241215165227110.png)
+
+![image-20241215165426556](readeMe/image-20241215165426556.png)
+
+----
+
+
+
+
+
+# 第四章：MyBaits的缓存
+
+## 前言
+
+数据库和程序之间的交互，永远是性能瓶颈
+
+- 网络通信，程序之间的数据传输（网络通信）
+- 硬盘存储大量数据，不利于查询（数据库优化的重点）
+- Java对象的复用问题，JDBC（优秀的连接池）
+  - Connection --> 池化、连接池
+  - Statement对象的复用 --> 池化
+
+**缓存**：空间换时间！**历史性数据**的查询优化
+
+1. 程序 与 数据库间搭建一个桥梁，能够把数据存储在内存中，提高用户的查询效率，尽量避免数据库的硬盘查询。
+2. 在查询过程上加入一层，*效率肯定会有所影响*，但是如果是第二次查询曾经查询过的数据，可以极大的提升效率。**缓存不是为了优化第一次查询，而是提升后续多次的查询效率**
+
+### 缓存分类
+
+- ORM框架集成缓存
+  - Hibernate、MyBatis、JDO（Hive）...
+
+- 第三方中间件充当缓存
+  - memCache、Redis、自研的方式...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
+
+
+
+
+# 第五章：MyBaits 与 Spring集成
+
+
+
+---
+
+
+
+
+
+# 第六章：MyBaits Plugins 插件
+
+
+
+
+
+---
+
+
+
+
+
+# 第七章：
+
+
+
+
+
+---
+
+
+
+
+
+# 第八章：
+
+
+
+
+
+---
+
+
+
+
+
+# 第九章：
+
+
+
+
+
+
+
+---
+
+
+
+
+
+# 第十章：
+
+
+
+
+
+
+
+---
+
+
+
+
+
+# 十一章：
+
+
+
+
+
+----
+
+
+

@@ -5,6 +5,8 @@ import com.baizhiedu.entity.User;
 import com.baizhiedu.proxy.MyMapperProxy;
 import org.apache.ibatis.io.Resources;
 
+import org.apache.ibatis.parsing.XNode;
+import org.apache.ibatis.parsing.XPathParser;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSessionFactoryBuilder;
@@ -12,6 +14,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Reader;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -19,6 +22,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -117,5 +121,28 @@ public class TestMybatis {
         }
 
 
+    }
+
+    @Test
+    public void testXMLParser() throws IOException {
+        // Reader reader = Resources.getResourceAsReader("users.xml");  两种相同的写法
+        InputStream reader = Resources.getResourceAsStream("users.xml");
+
+        XPathParser xPathParser = new XPathParser(reader);
+        List<XNode> xNodes = xPathParser.evalNodes("/users/*");
+
+        System.out.println("xNodes.size : " + xNodes.size());
+
+        List<com.baizhiedu.xml.User> users = new LinkedList<>();
+        for (XNode xNode : xNodes) {
+            // name 、 password 封装的xNode
+            List<XNode> children = xNode.getChildren();
+
+            com.baizhiedu.xml.User user = new com.baizhiedu.xml.User();
+            user.setName(children.get(0).getStringBody());
+            user.setPassword(children.get(1).getStringBody());
+            users.add(user);
+        }
+        System.out.println(users);
     }
 }
