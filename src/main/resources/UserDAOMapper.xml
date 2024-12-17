@@ -42,17 +42,20 @@
     <!--     select id,name from t_user -->
     <!-- </select> -->
 
-    <!-- <select id="queryUserById" resultType="User" useCache="true"> -->
-    <!--     select id,name from t_user where id = #{id} -->
-    <!-- </select> -->
+    <cache eviction="SOFT"/>
+    <cache eviction="fifo"/>
 
-    <select id="queryAllUsers" resultType="User">
+    <select id="queryUserById" resultType="User" useCache="true">
+        select id,name from t_user where id = #{id}
+    </select>
+
+    <select id="queryAllUsers" resultType="User" >
         select id, name from t_user
     </select>
 
-    <!-- <update id="update" parameterType="User"> -->
-    <!--       update t_user set name=#{name} where id=#{id} -->
-    <!-- </update> -->
+    <update id="update" parameterType="User">
+          update t_user set name=#{name} where id=#{id}
+    </update>
 
 
 

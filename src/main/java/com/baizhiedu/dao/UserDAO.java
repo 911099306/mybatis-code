@@ -14,8 +14,8 @@ public interface UserDAO {
 
     // public List<User> queryAllUsersByPage();//SqlSesson.select()
     //
-    // public User queryUserById(@Param("id") Integer id);
+    public User queryUserById(@Param("id") Integer id);
     //
-    // public void update(User user);
+    public void update(User user);
 
 }

@@ -59,9 +59,11 @@ public class testMybatis3 {
         SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
         SqlSession sqlSession1 = sqlSessionFactory.openSession();
         SqlSession sqlSession2 = sqlSessionFactory.openSession();
+        SqlSession sqlSession3 = sqlSessionFactory.openSession();
 
         UserDAO userDAO1 = sqlSession1.getMapper(UserDAO.class);
-
+        UserDAO userDAO2 = sqlSession2.getMapper(UserDAO.class);
+        UserDAO userDAO3 = sqlSession3.getMapper(UserDAO.class);
 
         List<User> users = userDAO1.queryAllUsers();
 
@@ -69,15 +71,42 @@ public class testMybatis3 {
             System.out.println("user = " + user);
         }
 
-        System.out.println("=================================================");
-        System.out.println("second query...");
+        User user1 = userDAO1.queryUserById(1);
+        System.out.println("user1 = " + user1);
 
-        UserDAO userDAO2 = sqlSession2.getMapper(UserDAO.class);
+        sqlSession1.commit();
+
+        System.out.println("=================================================");
+
         List<User> users1 = userDAO2.queryAllUsers();
 
         for (User user : users1) {
             System.out.println("user = " + user);
         }
+        sqlSession2.commit();
+
+        System.out.println("=================================================");
+
+
+        User user = new User(1, "小贱人");
+
+        userDAO3.update(user);
+
+        sqlSession3.commit();
+    }
+
+    @Test
+    public void Test2() throws IOException {
+        InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+        SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+        SqlSession sqlSession = sqlSessionFactory.openSession();
+
+        UserDAO userDAO = sqlSession.getMapper(UserDAO.class);
+
+        User user = new User(1, "999");
+
+        userDAO.update(user);
+
 
     }
 }

@@ -684,7 +684,7 @@ public void test() {
 
 MyBatis是通过 **key-value** 的结构进行存储，类似于Map结构
 
-### CaChe 实现类
+## CaChe 实现类
 
 MyBatis中Cache的实现方式
 
@@ -717,7 +717,7 @@ MyBatis中Cache的实现方式
   - 序列话：SerializedCache 自动完成kv的序列话、反序列化
   - 事务功能：**TransactionalCache**，只有在实务操作成功后，才会将对应数据加入缓存
 
-#### 装饰器模式 VS 代理模式
+### 装饰器模式 VS 代理模式
 
 MyBatis 中大量使用装饰器设计模式，作用：为目标扩展功能
 
@@ -735,7 +735,7 @@ MyBatis 中大量使用装饰器设计模式，作用：为目标扩展功能
 
 
 
-### Cache在MyBatis运行过程中应用细节
+## Cache在MyBatis运行过程中应用细节
 
 MyBatis 缓存二层体系
 
@@ -747,7 +747,7 @@ MyBatis 缓存二层体系
 
 
 
-#### 一级缓存
+### 一级缓存
 
 一级缓存仅对**当前sqlSession生效**, 更换sqlSession后无法共享缓存，但是在MyBatis种更换sqlSession 的场景非常多多且普遍，所以一级缓存很多情况下意义并不大，因此引入二级缓存。
 
@@ -765,11 +765,7 @@ MyBatis 缓存二层体系
 
 
 
-s
-
-
-
-##### 适配器
+#### 适配器设计模式
 
 ![image-20241216195953056](readeME/image-20241216195953056.png)
 
@@ -780,10 +776,6 @@ s
 - 解决问题：
 
   ![image-20241216200010767](readeME/image-20241216200010767.png)
-
-
-
-
 
 
 
@@ -799,6 +791,228 @@ s
 
 
 ### 二级缓存
+
+二级缓存默认关闭，需要进行配置对其进行激活
+
+1. mybatis-config.xml文件中配置<setting 的属性 【可以不用配置】
+
+2. mapper 文件中引入二级缓存 <Cache/ >标签     
+
+3. 查询语句中配置属性 <select useCache               【可以不用配置】
+
+4. 事务存在                     【**二级缓存必须依赖于事务**】
+
+   **事务提交后，才会将数据存入二级缓存的cache**
+
+![image-20241217143543708](readeME/image-20241217143543708.png)
+
+![image-20241217143509678](readeME/image-20241217143509678.png)
+
+![image-20241217143425503](readeME/image-20241217143425503.png)
+
+二级缓存如何实现的：
+
+1. Cache 接口及其所定义的核心是实现类 及其 装饰器增强
+
+   perpetualCache
+
+2. 二级缓存如何在MyBatis运行过程中起作用
+
+   1. 一级缓存是 
+
+      BaseExecutor 
+
+      ​		|->perpetualCache localCache 属性， 在query方法内起作用
+
+   2. 二级缓存
+
+      CachingExecutor,  SimpleE等的装饰器，提供更强大的缓存功能
+
+<img src="readeME/image-20241217140350536.png" alt="image-20241217140350536"  />
+
+使用CachingExecutor 对其进行增强
+
+```java
+CachingExecutor ce = new CachingExecutor(simpleExecutor) 【Configuration.java】
+```
+
+![image-20241217141139892](readeME/image-20241217141139892.png)
+
+
+
+![image-20241217142347917](readeME/image-20241217142347917.png)
+
+
+
+**[注意]:** 如果设计一个查询方法，涵盖所有的查询可能，返回值使用List进行包裹。
+
+==> Set 可以吗 ？不行！查询结果可能要求排序，set无法满足要求
+
+==> TreeSet 可以吗？ 不行！ 这个是排序， List是有序，排序的规则不一定满足要求
+
+
+
+
+
+## Cache的创建时机
+
+MapperBuilderAssistant.useNewCache
+
+
+
+![image-20241217150832018](readeME/image-20241217150832018.png)
+
+![image-20241217151140109](readeME/image-20241217151140109.png)
+
+MyBatis在解析xml配置文件时，创建Configuration 以及 MS对象，在解析mapper.xml文件创建MS对象的时候，同步创建了Cache对象。
+
+```java
+InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+```
+
+![image-20241217151936497](readeME/image-20241217151936497.png)
+
+
+
+![image-20241217152228841](readeME/image-20241217152228841.png)
+
+
+
+![image-20241217153028875](readeME/image-20241217153028875.png)
+
+1. 默认缓存类型：PerpetualCache、LruCache
+
+2. 创建新的实现：
+
+   ```java
+   Cache cache = newBaseCacheInstance(implementation, id);
+   ```
+
+3. 读取整合<cache <property> 增加的额外参数，（内置缓存不需要，为自定义缓存配置，如redis）
+
+   ![image-20241217153245077](readeME/image-20241217153245077.png)
+
+   
+
+4. 增加新的装饰器
+
+   ```java
+   cache = newCacheDecoratorInstance(decorator, cache);
+   ```
+
+   ![image-20241217153317389](readeME/image-20241217153317389.png)
+
+   ​			根据如上配置属性，进行相应装饰器的添加
+
+   ![image-20241217153446901](readeME/image-20241217153446901.png)
+
+### 构建者模式
+
+构建者设计模式的核心
+
+```
+new XXXBuilder().build();
+```
+
+
+
+## Cache的存放位置
+
+存放在MappedStatement对象内：
+
+![image-20241217154003143](readeME/image-20241217154003143.png)
+
+证明点1：
+
+- 查询时，从ms中获取cache：
+
+![image-20241217154126003](readeME/image-20241217154126003.png)
+
+- 创建ms时，将cache注入进去
+
+![image-20241217154641032](readeME/image-20241217154641032.png)
+
+![image-20241217154645941](readeME/image-20241217154645941.png)
+
+
+
+## 两级缓存的执行顺序
+
+代码调用中是：先找二级，二级没有 找一级，一级没有找db
+
+tmc.get
+
+​	Delegate.query
+
+​		BaseExecutor（localCache）
+
+​			SimpleExecutor
+
+调用链路分析：
+
+![image-20241217171118638](readeME/image-20241217171118638.png)
+
+
+
+![image-20241217171036369](readeME/image-20241217171036369.png)
+
+
+
+## Cache小结
+
+1. cache 与 ms 的关系
+
+   一个xxxMapper.xml文件对应一个cache，该cache在每个ms中共享
+
+![image-20241217173926601](readeME/image-20241217173926601.png)
+
+2. 一个Mapper.xml文件可以创建多个cache吗？**No**
+
+   cache标签只有第一个生效，下面的会被覆盖，并且在configuration中的存放，是以namespace为key的，一个mapper只对应一个
+
+   ![image-20241217180610746](readeME/image-20241217180610746.png)
+
+   ![image-20241217180616201](readeME/image-20241217180616201.png)
+
+   3. 不同的Mapper文件，可否共享一个cache？**Yes**
+
+      **<cache-ref namespace=""/ >** 引用其他mapper文件的cache，以namespace为key获取
+
+   4. DAO对数据进行更新操作 （**insert | update | delete**) 
+
+      Mybatis底层 Mapper文件所对应的 Cache 中 HashMap所有的key 及 对应的内容都清空
+
+      本地缓存也会清空的，commit后sqlsession的都会清空？noKnow
+
+   ![image-20241217182620353](readeME/image-20241217182620353.png)
+
+   ![image-20241217183431740](readeME/image-20241217183431740.png)
+
+   ![image-20241217183558472](readeME/image-20241217183558472.png)
+
+   ![image-20241217183707090](readeME/image-20241217183707090.png)
+
+   ![image-20241217182729891](readeME/image-20241217182729891.png)
+
+   ![image-20241217182931696](readeME/image-20241217182931696.png)
+
+   ![image-20241217183044900](readeME/image-20241217183044900.png)
+
+## 第三方缓存
+
+MyBatis底层缓存使用的是HashMap，不保证线程安全，无法使用到线上环境
+
+第三方缓存集成：
+
+- **JVM 缓存**：EhCache、OSCache、JBossCache
+- **中间件**     ：Redis、Memcache
+
+
+
+
+
+
 
 
 
