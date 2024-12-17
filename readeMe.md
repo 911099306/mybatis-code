@@ -1008,7 +1008,194 @@ MyBatis底层缓存使用的是HashMap，不保证线程安全，无法使用到
 - **JVM 缓存**：EhCache、OSCache、JBossCache
 - **中间件**     ：Redis、Memcache
 
+中间件的缓存，存储数据较JVM的要更多，多很多，并且内存管理更好。
 
+
+
+### 虚拟机缓存：ehcache
+
+集成三步骤：
+
+1. 引入pom
+
+   ```xml
+   <dependency>
+               <groupId>org.mybatis.caches</groupId>
+               <artifactId>mybatis-ehcache</artifactId>
+               <version>1.0.3</version>
+   </dependency>
+   ```
+
+2. 引入配置文件，声明缓存策略 echcache.xml
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd"
+            updateCheck="false">
+       <!-- 缓存策略  -->
+       <defaultCache
+               maxElementsInMemory="1000"
+               maxElementsOnDisk="10000000"
+               eternal="false"
+               overflowToDisk="false"
+               timeToIdleSeconds="120"
+               timeToLiveSeconds="120"
+               diskExpiryThreadIntervalSeconds="120"
+               memoryStoreEvictionPolicy="LRU">
+       </defaultCache>
+   
+       <cache name=""/>
+       <cache name=""/>
+   </ehcache>
+   ```
+
+3. 配置cache类型，指定Ehcache
+
+   也可以将第二部的缓存配置信息写到 cache 内的properties属性
+
+   ```xml
+   <cache type="org.mybatis.caches.ehcache.LoggingEhcache"/>
+   ```
+
+   ![image-20241217185714794](readeME/image-20241217185714794.png)
+
+   
+
+### 中间件缓存：Redis
+
+1. 早期 Mybatis 与 Redis 没有现成 集成方案 自己开发
+
+2. 现在 Mybatis 与 Redis 现成集成方案 github 
+
+#### 整体开发四路
+
+遵从MyBatis内部 Cache 的规范 
+
+1. **所有**Mybatis缓存必须要实现 Cache接口
+
+2. 应用过程中在 xxxMapper.xml 文件中，配置cache的类型, 默认是Perpetual.java
+
+   ```xml
+   <cache type="org.mybatis.caches.ehcache.LoggingEhcache"/>
+   ```
+
+2.现成的方案
+
+```xml
+ <dependency>
+ 	<groupId>org.mybatis.caches</groupId>
+ 	<artifactId>mybatis-redis</artifactId>
+ 	<version>1.0.0-beta2</version>
+</dependency>
+
+
+redis.properties
+host
+port
+
+```
+
+
+
+#### 自定义实现整合
+
+实现Cache接口, 非常简单非常简单
+
+```java
+/**
+ * @author Serendipity
+ * @description
+ * @date 2024-12-17 19:57
+ **/
+public class RedisCache implements Cache {
+
+    private static final Logger log = LoggerFactory.getLogger(RedisCache.class);
+    private final String id;
+    private final HashMap<Object, Object> internalCache = new HashMap<>();
+
+    /**
+     * 完全照猫画虎，让 MyBatic 传入id
+     */
+    public RedisCache(String id) {
+        this.id = id;
+    }
+
+    @Override
+    public String getId() {
+        return id;
+    }
+
+    /**
+     * 向 redis 存储数据
+     */
+    @Override
+    public void putObject(Object key, Object value) {
+        log.info("putObject, key: {}, value: {}", key, value);
+        Jedis jedis = JedisUtils.getJedis();
+        jedis.set(SerializationUtils.serialize((Serializable) key), SerializationUtils.serialize((Serializable) value));
+    }
+
+    /**
+     * 从 redis 获取缓存数据
+     */
+    @Override
+    public Object getObject(Object key) {
+        log.info("getObject, key: {}", key);
+        Jedis jedis = JedisUtils.getJedis();
+        byte[] bytes = jedis.get(SerializationUtils.serialize((Serializable) key));
+        if (bytes == null) {
+            return null;
+        }
+        return SerializationUtils.deserialize(bytes);
+    }
+
+    /**
+     * 从 redis 删除缓存数据
+     */
+    @Override
+    public Object removeObject(Object key) {
+        log.info("removeObject, key: {}", key);
+
+        Jedis jedis = JedisUtils.getJedis();
+        byte[] serializeKey = SerializationUtils.serialize((Serializable) key);
+        byte[] bytes = jedis.get(serializeKey);
+        if (bytes == null) {
+            return null;
+        }
+        jedis.del(serializeKey);
+        return SerializationUtils.deserialize(bytes);
+    }
+
+    /**
+     * 从 redis 清空缓存数据
+     */
+    @Override
+    public void clear() {
+        log.info("clear...");
+        Jedis jedis = JedisUtils.getJedis();
+        jedis.flushDB();
+    }
+
+    /**
+     * 获取缓存数量
+     */
+    @Override
+    public int getSize() {
+        log.info("getSize...");
+        Jedis jedis = JedisUtils.getJedis();
+        return jedis.dbSize().intValue();
+    }
+
+    @Override
+    public ReadWriteLock getReadWriteLock() {
+        return null;
+    }
+
+
+}
+
+```
 
 
 

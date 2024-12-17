@@ -8,80 +8,99 @@ import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 
+/**
+ * @author Serendipity
+ * @description
+ * @date 2024-12-17 19:57
+ **/
 public class RedisCache implements Cache {
 
-
     private static final Logger log = LoggerFactory.getLogger(RedisCache.class);
-    private String id;
+    private final String id;
+    private final HashMap<Object, Object> internalCache = new HashMap<>();
 
+    /**
+     * 完全照猫画虎，让 MyBatic 传入id
+     */
     public RedisCache(String id) {
         this.id = id;
     }
 
     @Override
     public String getId() {
-        log.debug("");
-        return this.id;
+        return id;
     }
 
+    /**
+     * 向 redis 存储数据
+     */
     @Override
     public void putObject(Object key, Object value) {
-        //存储Redis
-        //1. RedisClient
-        // Jedis Resession 创建Jedis 对象 ----->  Connection
-        //Connection 负责连接数据库 ip port 连接池
-        //Jedis 负责连接Redis ip port 连接池 ---> JedisUtils
 
-        log.info("put key is "+key+ " value is "+value);
-        //log.debug("");
+        log.info("");
+        log.info("putObject, key: {}, value: {}", key, value);
         Jedis jedis = JedisUtils.getJedis();
-        jedis.set(SerializationUtils.serialize((Serializable)key),
-                  SerializationUtils.serialize((Serializable)value));
-
+        jedis.set(SerializationUtils.serialize((Serializable) key), SerializationUtils.serialize((Serializable) value));
     }
 
+    /**
+     * 从 redis 获取缓存数据
+     */
     @Override
     public Object getObject(Object key) {
-
-        log.info("get key is "+key);
+        log.info("getObject, key: {}", key);
         Jedis jedis = JedisUtils.getJedis();
-        byte[] bs = jedis.get(SerializationUtils.serialize((Serializable) key));
-        if (bs == null) {
+        byte[] bytes = jedis.get(SerializationUtils.serialize((Serializable) key));
+        if (bytes == null) {
             return null;
         }
-        return SerializationUtils.deserialize(bs);
+        return SerializationUtils.deserialize(bytes);
     }
 
+    /**
+     * 从 redis 删除缓存数据
+     */
     @Override
-    // 删除，并且 获取
     public Object removeObject(Object key) {
-        byte[] bs = new byte[0];
-        try {
-            bs = JedisUtils.getJedis().get(SerializationUtils.serialize((Serializable)key));
-            JedisUtils.getJedis().del(SerializationUtils.serialize((Serializable)key));
-        } catch (Exception e) {
-            if (log.isDebugEnabled())
-                log.debug("remove handler ocurr exception ", e);
+        log.info("removeObject, key: {}", key);
+        Jedis jedis = JedisUtils.getJedis();
+        byte[] serializeKey = SerializationUtils.serialize((Serializable) key);
+        byte[] bytes = jedis.get(serializeKey);
+        if (bytes == null) {
+            return null;
         }
-        return SerializationUtils.deserialize(bs);
+        jedis.del(serializeKey);
+        return SerializationUtils.deserialize(bytes);
     }
 
+    /**
+     * 从 redis 清空缓存数据
+     */
     @Override
     public void clear() {
-        if (log.isDebugEnabled())
-            log.debug("");
-           JedisUtils.getJedis().flushDB();
+        log.info("clear...");
+
+        Jedis jedis = JedisUtils.getJedis();
+        jedis.flushDB();
     }
 
+    /**
+     * 获取缓存数量
+     */
     @Override
     public int getSize() {
-        return JedisUtils.getJedis().dbSize().intValue();
+        log.info("getSize...");
+        Jedis jedis = JedisUtils.getJedis();
+        return jedis.dbSize().intValue();
     }
 
     @Override
     public ReadWriteLock getReadWriteLock() {
         return null;
     }
+
+
 }

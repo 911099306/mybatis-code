@@ -22,7 +22,7 @@
 
     <!--<cache eviction="FIFO" blocking="" readOnly="" size="" flushInterval=""/>-->
 
-  <!--  <cache type="com.baizhiedu.cache.RedisCache"/>-->
+
 
    <!-- <cache type="org.mybatis.caches.redis.RedisCache"/>-->
 
@@ -42,8 +42,8 @@
     <!--     select id,name from t_user -->
     <!-- </select> -->
 
-    <cache eviction="SOFT"/>
-    <cache eviction="fifo"/>
+    <!-- <cache type="org.mybatis.caches.ehcache.LoggingEhcache"/> -->
+    <cache type="com.baizhiedu.cache.RedisCache"/>
 
     <select id="queryUserById" resultType="User" useCache="true">
         select id,name from t_user where id = #{id}

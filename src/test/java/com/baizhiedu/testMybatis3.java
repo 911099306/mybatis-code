@@ -85,13 +85,8 @@ public class testMybatis3 {
         }
         sqlSession2.commit();
 
-        System.out.println("=================================================");
-
-
-        User user = new User(1, "小贱人");
-
+        User user = new User(1, "999");
         userDAO3.update(user);
-
         sqlSession3.commit();
     }
 

@@ -33,7 +33,7 @@ public class JedisUtils {
        jedisPoolConfig.setMaxTotal(Integer.parseInt(properties.getProperty("maxTotal")));
        jedisPoolConfig.setMaxWaitMillis(Integer.parseInt(properties.getProperty("maxWait")));
 
-       jedisPool = new JedisPool(jedisPoolConfig,properties.getProperty("ip"),Integer.parseInt(properties.getProperty("port")));
+       jedisPool = new JedisPool(jedisPoolConfig,properties.getProperty("ip"),Integer.parseInt(properties.getProperty("port")),5000,"123456");
    }
 
     public static Jedis getJedis() {
