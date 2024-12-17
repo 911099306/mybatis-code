@@ -5,7 +5,6 @@ import java.io.Serializable;
 public class User implements Serializable {
     private Integer id;
     private String name;
-    private Integer version;
 
     public User() {
 }
@@ -31,13 +30,6 @@ public class User implements Serializable {
         this.name = name;
     }
 
-    public Integer getVersion() {
-        return version;
-    }
-
-    public void setVersion(Integer version) {
-        this.version = version;
-    }
 
     @Override
     public String toString() {

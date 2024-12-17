@@ -46,8 +46,8 @@
     <!--     select id,name from t_user where id = #{id} -->
     <!-- </select> -->
 
-    <select id="queryAllUsers" resultType="com.baizhiedu.entity.User">
-        select * from t_user
+    <select id="queryAllUsers" resultType="User">
+        select id, name from t_user
     </select>
 
     <!-- <update id="update" parameterType="User"> -->
