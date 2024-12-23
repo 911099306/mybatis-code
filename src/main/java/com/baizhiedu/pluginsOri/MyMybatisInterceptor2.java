@@ -1,4 +1,4 @@
-package com.baizhiedu.plugins;
+package com.baizhiedu.pluginsOri;
 
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.plugin.Intercepts;

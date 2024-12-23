@@ -1,6 +1,7 @@
-package com.baizhiedu.plugins;
+package com.baizhiedu.pluginsOri;
 
 import com.baizhiedu.util.Page;
+import com.baizhiedu.util.ThreadLocalUtils;
 import org.apache.ibatis.executor.parameter.ParameterHandler;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.MappedStatement;
@@ -17,70 +18,83 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Properties;
 
-/**
- * @author Serendipity
- * @description
- * @date 2024-12-21 15:03
- **/
-@Intercepts(
+@Intercepts({
         @Signature(type = StatementHandler.class, method = "prepare", args = {Connection.class, Integer.class})
-)
-public class PageHelperInterceptor1 extends MyMyBatisInterceptorAdapter{
+})
+public class PageHelperInterceptor1 extends MyMybatisInterceptorAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(PageHelperInterceptor1.class);
 
     private String queryMethodPrefix;
-    private String queryMethodsuffix;
+
+    private String queryMethodSuffix;
+
+    private String databaseType;
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
-
-        log.info("----------PageHelperInterceptor1------------");
-
-        // 获得 SQL 语句，拼接 limit
+        if (log.isInfoEnabled())
+            log.info("----pageHelperInterceptor------");
+        //获得sql语句 拼接字符串 limit
         MetaObject metaObject = SystemMetaObject.forObject(invocation);
+
         String sql = (String) metaObject.getValue("target.delegate.boundSql.sql");
         MappedStatement mappedStatement = (MappedStatement) metaObject.getValue("target.delegate.mappedStatement");
-
-        // 判断是否 id 以 query 开头
         String id = mappedStatement.getId();
-        log.info("queryMethodPrefix:{}, queryMethodsuffix:{}",queryMethodPrefix,queryMethodsuffix);
 
-        if (id.contains(queryMethodPrefix) && id.endsWith(queryMethodsuffix)) {
+        if (id.indexOf(queryMethodPrefix) != -1 && id.endsWith(queryMethodSuffix)) {
+            //分页相关的操作封装 对象（vo dto)
+            //获得Page对象 并设置Page对象 totalSize属性 算出总页数
 
-            // 获得page对象，并设置Page对象 totalSize 属性，并算出总页数
-            Page page = new Page(1);
+            //假设 Page
+            //Page page = new Page(1);
 
-            // 对查询条件下的数据量进行统计所有
+            //直接通过DAO方法的参数 获得Page对象
+            //Page page = (Page) metaObject.getValue("target.delegate.parameterHandler.parameterObject");
+
+            //通过ThreadLocalUtils
+            Page page = ThreadLocalUtils.get();
+            //清空一下
+
+
+            //select id,name from t_user 获得 全表有多少条数据
+            // select count(*) from t_user
+
+            //select id,name from t_user where name = ?;
+            //select count(*）fromt t_user where name = ?
+
+            //select id,name from t_user where  name = ? and id = ?;
+
             String countSql = "select count(*) " + sql.substring(sql.indexOf("from"));
-            // JDBC 进行查询操作，这里已经到mybatis底层了
-            // 1. Connection  PreparedStatement
+            //JDBC操作
+            //1 Connection  PreapredStatement
             Connection conn = (Connection) invocation.getArgs()[0];
             PreparedStatement preparedStatement = conn.prepareStatement(countSql);
 
-           /*
-                如果存在查询条件 where id = ？  需要将参数替换为实际的值， MyBatis 给了解决方案，如下ParameterHandler处理
-            preparedStatement.setString(1,?)
+           /* preparedStatement.setString(1,?)
             preparedStatement.setString(2,?);*/
             ParameterHandler parameterHandler = (ParameterHandler) metaObject.getValue("target.delegate.parameterHandler");
             parameterHandler.setParameters(preparedStatement);
 
             ResultSet resultSet = preparedStatement.executeQuery();
             if(resultSet.next()){
-                page.setTotalSize(resultSet.getInt(1));
+               page.setTotalSize(resultSet.getInt(1));
             }
+            //page.setTotalSize();
 
-            // 查询分页数据
-            String newSql = sql + " limit " + page.getFirstItem() + " , " + page.getPageCount();
+
+            //做一个判断 如果当前是MySQL 如果是Oracle....
+            //if databaseType == "oracle" or "mysql"
+            String newSql = sql + " limit "+page.getFirstItem()+","+page.getPageCount();
+
             metaObject.setValue("target.delegate.boundSql.sql", newSql);
         }
-
         return invocation.proceed();
     }
 
     @Override
     public void setProperties(Properties properties) {
-        this.queryMethodsuffix = properties.getProperty("queryMethodsuffix");
         this.queryMethodPrefix = properties.getProperty("queryMethodPrefix");
+        this.queryMethodSuffix = properties.getProperty("queryMethodSuffix");
     }
 }

@@ -88,6 +88,8 @@ public class testMybatis3 {
         User user = new User(1, "999");
         userDAO3.update(user);
         sqlSession3.commit();
+
+        System.out.println();
     }
 
     @Test

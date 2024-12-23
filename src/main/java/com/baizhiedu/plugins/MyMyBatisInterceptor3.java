@@ -12,33 +12,39 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.util.Properties;
 
-@Intercepts({
-        @Signature(type = StatementHandler.class, method = "prepare", args = {Connection.class, Integer.class})
-})
+/**
+ * @author Serendipity
+ * @description
+ * @date 2024-12-20 19:03
+ **/
+@Intercepts(
+    @Signature(type = StatementHandler.class, method = "prepare", args = {Connection.class, Integer.class})
+)
+public class MyMyBatisInterceptor3 extends MyMyBatisInterceptorAdapter {
 
-public class MyMybatisInterceptor3 extends MyMybatisInterceptorAdapter {
+    private String testValue;
+    private static final Logger log = LoggerFactory.getLogger(MyMyBatisInterceptor3.class);
 
-    private static final Logger log = LoggerFactory.getLogger(MyMybatisInterceptor3.class);
-
+    /**
+     * 作用：执行的拦截功能，书写在这个方法里，然后放行原有方法
+     */
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
-
-        if (log.isDebugEnabled())
-            log.debug("-----this is myMybatisInterceptor3-------");
+        log.debug("--------------  interceptor  --------------");
 
         MetaObject metaObject = SystemMetaObject.forObject(invocation);
-
-        String methodName = (String) metaObject.getValue("method.name");
         String sql = (String) metaObject.getValue("target.delegate.boundSql.sql");
-
-        if (log.isDebugEnabled())
-            log.debug("methodname is " + methodName + " sql is " + sql);
-
+        String methonName = (String) metaObject.getValue("method.name");
+        log.debug("sql: {}",sql);
+        log.debug("methodName: {}",methonName);
         return invocation.proceed();
     }
 
+
+    /**
+     * 作用：获取拦截器相关的参数
+     */
     @Override
     public void setProperties(Properties properties) {
-
     }
 }

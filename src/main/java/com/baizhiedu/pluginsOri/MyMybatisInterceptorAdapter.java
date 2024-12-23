@@ -1,4 +1,4 @@
-package com.baizhiedu.plugins;
+package com.baizhiedu.pluginsOri;
 
 import org.apache.ibatis.plugin.Interceptor;
 import org.apache.ibatis.plugin.Plugin;

@@ -15,17 +15,28 @@ package com.baizhiedu.util;
  * 7 / 3 = 3
  */
 public class Page {
+    /**
+     * 前端 传递
+     */
     private Integer pageIndex;
+    /**
+     * 前端 传递
+     */
     private Integer pageCount;
-    //查询数据库的
-    //sql语句相关
-    //计算在哪里完成？ 拦截器操作
+    /**
+     * 查询数据库的
+     * sql语句相关
+     * 计算在哪里完成？ 拦截器操作
+     */
     private Integer totalSize;
+    /**
+     * 也需要计算 totalSize / pageCount  上取整
+     */
     private Integer pageSize;
 
     public Page(Integer pageIndex) {
         this.pageIndex = pageIndex;
-        this.pageCount = 5;
+        this.pageCount = 3;
     }
 
     public Page(Integer pageIndex, Integer pageCount) {
@@ -70,7 +81,9 @@ public class Page {
         this.pageSize = pageSize;
     }
 
-    // limit getFirstItem,pageSize;
+    /**
+     * limit getFirstItem,pageSize;
+     */
     public Integer getFirstItem() {
         return pageIndex - 1;
     }

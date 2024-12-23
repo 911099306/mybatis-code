@@ -12,7 +12,7 @@ public interface UserDAO {
 
     public List<User> queryAllUsers();
 
-    // public List<User> queryAllUsersByPage();//SqlSesson.select()
+    public List<User> queryAllUsersByPage();//SqlSesson.select()
 
     public User queryUserById(@Param("id") Integer id);
 

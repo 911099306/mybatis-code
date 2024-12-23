@@ -118,9 +118,10 @@ List<User> users = sqlSession.selectList("com.baizhiedu.dao.UserDAO.queryAllUser
 
 # 第二章：MyBaits的核心对象
 
-mybatis 是什么
+mybatis 是什么 
+
 1. 是通过sqlSession对JDBC进行封装 
-   1. JDBC的connection、statement、ResultSet
+   1. JDBC的connection、==statement==、ResultSet
 2. 封装了SqlSessionFactory，来创建sqlSession
 3. mybatis-config.xml 配置信息
 4. Mapper.xml 基于此生成dao文件
@@ -128,6 +129,8 @@ mybatis 是什么
 ## Mybatis的核心对象及其作用
 1. 数据存储类对象
 2. 操作类对象
+
+
 
 ### 数据存储类对象
 
@@ -139,7 +142,7 @@ mybatis 是什么
 ####  Configuration.class
 
 ```
-   mybatis-config.xml ----> Configuration.class
+mybatis-config.xml ----> Configuration.class
       Configuration.class 的作用
          1. 封装了mybatis-config.xml 文件的内容
          	1. setting 标签内容
@@ -269,7 +272,7 @@ Excutor 实现类：
 
 为什么Excutor 是处理核心，有update和query方法，还要再将核心封装到Statement里面？？
 
-==>   **单一职责原则**，Excutor里有增删改查操作还有事务和缓存的操作，将核心的增删改查抽取出来statement类进行具体实现，上面Excutor只进行包装一下。
+==>**单一职责原则**，Excutor里有增删改查操作还有事务和缓存的操作，将核心的增删改查抽取出来statement类进行具体实现，上面Excutor只进行包装一下。
 
 ------
 
@@ -342,7 +345,7 @@ SqlSession.selectOne();
       2. 输出传输 （RPC）Dubbo 
    3. 无中生有: 接口实现类，我们看不见实实在在的类文件，但是运行时却能体现出来。
 
-    Proxy.newProxyIntance(ClassLoader,Interface,InvocationHandler)
+   Proxy.newProxyIntance(ClassLoader,Interface,InvocationHandler)
 
 2. 实现类 如何进行实现的   
 
@@ -548,7 +551,7 @@ SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(input
 
 
 
-### SqlSession
+### openSession
 
 ```java
 SqlSession sqlSession = sqlSessionFactory.openSession();
@@ -1209,17 +1212,495 @@ public class RedisCache implements Cache {
 
 
 
-# 第五章：MyBaits 与 Spring集成
+# 第五章：MyBaits  plugings 拦截器
+
+>  问题：MyBatis 数据库访问与操作进行**深度封装**
+>
+> - 优点：应用开发速度快
+> - 缺点：灵活性较JDBC差
+>
+> ==> 因此引入了plugings，供第三方扩展
 
 
 
----
+>  如：获得MyBatis开发过程中执行的SQL语句
+
+解决思路：MyBatis拦截器
+
+
+
+**拦截器：**
+
+- 作用：通过拦截器拦截用户对DAO方法得调用，加入一些通用功能
+
+- 目标：**Executor**、**statementHandler**、ResultSetHandler、ParameterHander中的一些方法
+
+  四个接口中定义的每个方法，都可以通过拦截器进行拦截使用。
+
+使用频率：StatementHandler > Executor > ResultSetHandler ≈ ParameterHander
+
+
+
+## 拦截器基本开发
+
+开发步骤基本可分为两类：
+
+1. 编码
+2. 配置
+
+### 编码
+
+1. 自定义拦截器，实现 interceptor 接口，` xxx类  implement Interceptor`
+
+2. 对自定义拦截器标注拦截目标，拦截得是哪个类的哪个方法
+
+   
+
+> 自定义拦截器，实现 interceptor 接口
+
+`public class MyMyBatisInterceptor implements Interceptor {}`
+
+
+
+> 指定目标，哪个类得哪个方法
+
+`@Intercepts(@Signature(type = , method = , args = ))`
+
+- type: 拦截得类： Execuptor、StatementHandler...
+- method: 方法名：query、update...
+- args: 方法得参数类型（重载）：MappedStatement.class、Object.class
+
+拦截多个方法：
+
+```
+@Intercepts(
+        {
+                @Signature(type = Executor.class, method = "update", args = {MappedStatement.class, Object.class}),
+                @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class,RowBounds.class, ResultHandler.class})
+
+        }
+)
+```
+
+
+
+> 案例：
+
+```java
+@Intercepts(
+	@Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class})
+)
+public class MyMyBatisInterceptor implements Interceptor {
+
+    /**
+     * 作用：执行的拦截功能，书写在这个方法里，然后放行原有方法
+     */
+    @Override
+    public Object intercept(Invocation invocation) throws Throwable {
+        log.info("--------------拦截器中的  interceptor  方法执行--------------");
+        return invocation.proceed();
+    }
+
+    /**
+     * 作用：将这个拦截器 传递给 下一个拦截器
+     */
+    @Override
+    public Object plugin(Object target) {
+        // 几乎不需要变动，这么写死就可以
+        return Plugin.wrap(target, this);
+    }
+
+    /**
+     * 作用：获取拦截器相关的参数
+     */
+    @Override
+    public void setProperties(Properties properties) {
+
+    }
+}
+```
+
+### 配置
+
+在mybatis-config.xml文件中增加配置属性
+
+```xml
+<plugins>
+    <plugin interceptor="com.baizhiedu.plugins.MyMyBatisInterceptor"/>
+</plugins>
+```
+
+
+
+## StatementHandler
+
+![image-20241220195705965](readeME/image-20241220195705965.png)
+
+默认创建，**PrearedStatementHandler**
+
+![image-20241220200251521](readeME/image-20241220200251521.png)
+
+在实际开发中，使用StatementHandler最多，在精确一些，是PreparedStatementHandler较多，精确内部，就是prepare、query、update三个方法。最常用的拦截，prepare方法
+
+![image-20241220200437744](readeME/image-20241220200437744.png)
+
+- 还需要找到SQL语句！！！
+
+
+
+### Interceptor
+
+基于适配器实现自定义拦截器
+
+由于plugin方法基本都是固定写法，不需要改变，可以直接将交由适配器设置，核心配置不需要关注
+
+```java
+public abstract class MyMyBatisInterceptorAdapter implements Interceptor {
+    @Override
+    public Object plugin(Object target) {
+        return Plugin.wrap(target, this);
+    }
+}
+```
+
+```java
+@Intercepts(
+    @Signature(type = StatementHandler.class, method = "prepare", args = {Connection.class, Integer.class})
+)
+public class MyMyBatisInterceptor2 extends MyMyBatisInterceptorAdapter {
+
+    private String testValue;
+    private static final Logger log = LoggerFactory.getLogger(MyMyBatisInterceptor2.class);
+
+    /**
+     * 作用：执行的拦截功能，书写在这个方法里，然后放行原有方法
+     */
+    @Override
+    public Object intercept(Invocation invocation) throws Throwable {
+        log.debug("--------------拦截器中的  interceptor  方法执行--------------");
+        log.debug("testValue: {}",testValue);
+        return invocation.proceed();
+    }
+
+
+    /**
+     * 作用：获取拦截器相关的参数
+     */
+    @Override
+    public void setProperties(Properties properties) {
+        System.out.println("properties = " + properties);
+        this.testValue = properties.getProperty("testProperty");
+
+    }
+}
+
+```
+
+```xml
+生效自下而上MyMyBatisInterceptor先执行，MyMyBatisInterceptor2再执行
+<plugins>
+        <plugin interceptor="com.baizhiedu.plugins.MyMyBatisInterceptor2">
+            <property name="testProperty" value="testValue v2.0"/>
+        </plugin>
+        <!-- <plugin interceptor="com.baizhiedu.plugins.MyMyBatisInterceptor"> -->
+        <!--     <property name="testProperty" value="testValue v1.0"/> -->
+        <!-- </plugin> -->
+
+</plugins>
+
+
+```
+
+
+
+在有了Connection后，如何找到SQL语句？
+
+### Invocation
+
+![image-20241221135029974](readeME/image-20241221135029974.png)
+
+
+
+如何获取sql？
+
+![image-20241221135408252](readeME/image-20241221135408252.png)
+
+```java
+    @Override
+    public Object intercept(Invocation invocation) throws Throwable {
+        log.debug("--------------拦截器中的  interceptor  方法执行--------------");
+        RoutingStatementHandler target = (RoutingStatementHandler) invocation.getTarget();
+        BoundSql boundSql = target.getBoundSql();
+        String sql = boundSql.getSql();
+        log.debug("sql: {}",sql);
+        return invocation.proceed();
+    }
+```
+
+
+
+使用反射降低多次获取（也是MyBatis源码中的方式）
+
+```java
+@Override
+public Object intercept(Invocation invocation) throws Throwable {
+    log.debug("--------------拦截器中的  interceptor  方法执行--------------");
+    MetaObject metaObject = SystemMetaObject.forObject(invocation);
+    String sql = (String) metaObject.getValue("target.delegate.boundSql.sql");
+    log.debug("sql: {}",sql);
+    return invocation.proceed();
+}
+```
+
+
+
+> 在编码开发过程中，如何获得拦截的对象以及相关参数？
+
+如上，在拦截StatementHandler.prepare方法时，可通过 invocation对 象获得所有信息
+
+![image-20241221142227710](readeME/image-20241221142227710.png)
+
+```java
+@Override
+public Object intercept(Invocation invocation) throws Throwable {
+    log.debug("--------------  interceptor  --------------");
+
+    MetaObject metaObject = SystemMetaObject.forObject(invocation);
+    String sql = (String) metaObject.getValue("target.delegate.boundSql.sql");
+    String methonName = (String) metaObject.getValue("method.name");
+    log.debug("sql: {}",sql);
+    log.debug("methodName: {}",methonName);
+    return invocation.proceed();
+}
+```
+
+> MetaObject ---> Mybatis底层封装的反射工具类    （仅仅MyBatis中存在）
+
+开源的框架底层都会进行对应的封装：
+
+- IO操作 
+- 反射的操作 
+- 集合的操作
+
+## 实际应用
+
+> 如果在实际使用MyBatis中，需要对sql语句进行更改，这时就是interceptor大显身手的时候了
+
+1. 分页
+2. 乐观锁 
+
+### 分页
+
+>  开发过程步骤
+
+1. entity
+2. 别名
+3. 表
+4. dao
+5. mapper
+6. 注册
+7. API
+
+
+
+#### 传统分页
+
+涉及4、5步骤。
+
+```java
+UserDAO{
+     List<User>  queryAllUsers(int pageIndex) -- 每页显示多少条
+
+     List<User>  queryUserByName(String name,int pageIndex)
+}
+```
+
+```xml
+UserDAOMapper
+
+<select id="queryAllUsers">
+  select * from t_user limit pageIndex-1,5
+</select>
+
+<select id="queryUserByName"
+   select * from t_user where name = #{name} limit pageIndex-1,5
+</select>
+```
+
+**缺点：**
+
+- **冗余：**所有的分页Mapper文件都要写：`limit x, x` 
+- **耦合好，修改困难：**如果更换db，如mysql-> oracle，每个mapper文件都需要进行更改
+
+
+
+#### 通用分页
+
+limit 在 mapper 中不进行书写，通过拦截器进行操作。
+
+>  step1: 获得 SQL 语句，拼接 limit
+
+```java
+ @Override
+public Object intercept(Invocation invocation) throws Throwable {
+
+    log.info("----------PageHelperInterceptor1------------");
+
+    // 获得 SQL 语句，拼接 limit
+    MetaObject metaObject = SystemMetaObject.forObject(invocation);
+    String sql = (String) metaObject.getValue("target.delegate.boundSql.sql");
+    String newSql = sql + " limit 0, 3";
+    metaObject.setValue("target.delegate.boundSql.sql", newSql);
+
+    return invocation.proceed();
+}
+```
+
+**问题：**
+
+1. limit的参数写死了
+2. 拦截了所有语句，但是非查询操作这么做会出错的。
+
+
+
+> opt1 ：要求：所有分页方法均以query开头 ，增加对非查询类型方法的过滤
+
+```java
+ @Override
+    public Object intercept(Invocation invocation) throws Throwable {
+
+        log.info("----------PageHelperInterceptor1------------");
+
+        // 获得 SQL 语句，拼接 limit
+        MetaObject metaObject = SystemMetaObject.forObject(invocation);
+        String sql = (String) metaObject.getValue("target.delegate.boundSql.sql");
+        MappedStatement mappedStatement = (MappedStatement) metaObject.getValue("target.delegate.mappedStatement");
+
+        // 判断是否 id 以 query 开头   id:com.baizhiedu.dao.UserDAO.queryAllUsers
+         String id = mappedStatement.getId();
+        if (id.contains("query")){
+            String newSql = sql + " limit 0, 3";
+            metaObject.setValue("target.delegate.boundSql.sql", newSql);
+        }
+
+
+        return invocation.proceed();
+    }
+```
+
+**缺点：**
+
+1. 并不是所有的查询方法都需要分页
+
+
+
+> opt2：需要分页的以query开头，ByPage结尾
+
+```java
+ @Override
+    public Object intercept(Invocation invocation) throws Throwable {
+
+        log.info("----------PageHelperInterceptor1------------");
+
+        // 获得 SQL 语句，拼接 limit
+        MetaObject metaObject = SystemMetaObject.forObject(invocation);
+        String sql = (String) metaObject.getValue("target.delegate.boundSql.sql");
+        MappedStatement mappedStatement = (MappedStatement) metaObject.getValue("target.delegate.mappedStatement");
+
+        // 判断是否 id 以 query 开头, ByPage 结尾   id：com.baizhiedu.dao.UserDAO.queryAllUsers
+        String id = mappedStatement.getId();
+        if (id.contains("query") && id.endsWith("byPage")) {
+            String newSql = sql + " limit 0, 3";
+            metaObject.setValue("target.delegate.boundSql.sql", newSql);
+        }
+
+        return invocation.proceed();
+    }
+```
+
+进一步优化魔法值，交由用户进行定义
+
+```java
+@Intercepts(
+        @Signature(type = StatementHandler.class, method = "prepare", args = {Connection.class, Integer.class})
+)
+public class PageHelperInterceptor1 extends MyMyBatisInterceptorAdapter{
+
+    private static final Logger log = LoggerFactory.getLogger(PageHelperInterceptor1.class);
+
+    private String queryMethodPrefix;
+    private String queryMethodsuffix;
+
+    @Override
+    public Object intercept(Invocation invocation) throws Throwable {
+
+        log.info("----------PageHelperInterceptor1------------");
+
+        // 获得 SQL 语句，拼接 limit
+        MetaObject metaObject = SystemMetaObject.forObject(invocation);
+        String sql = (String) metaObject.getValue("target.delegate.boundSql.sql");
+        MappedStatement mappedStatement = (MappedStatement) metaObject.getValue("target.delegate.mappedStatement");
+
+        // 判断是否 id 以 query 开头
+        String id = mappedStatement.getId();
+        log.info("queryMethodPrefix:{}, queryMethodsuffix:{}",queryMethodPrefix,queryMethodsuffix);
+
+        if (id.contains(queryMethodPrefix) && id.endsWith(queryMethodsuffix)) {
+            String newSql = sql + " limit 0, 3";
+            metaObject.setValue("target.delegate.boundSql.sql", newSql);
+
+        }
+
+        return invocation.proceed();
+    }
+
+    @Override
+    public void setProperties(Properties properties) {
+        this.queryMethodsuffix = properties.getProperty("queryMethodsuffix");
+        this.queryMethodPrefix = properties.getProperty("queryMethodPrefix");
+    }
+}
+
+```
+
+```xml
+ <plugin interceptor="com.baizhiedu.plugins.PageHelperInterceptor1">
+ 	<property name="queryMethodPrefix" value="query"/>
+ 	<property name="queryMethodsuffix" value="ByPage"/>
+ </plugin>
+```
+
+
+
+> opt2: 参数进行自定义
 
 
 
 
 
-# 第六章：MyBaits Plugins 插件
+
+
+### 乐观锁
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----
+
+# 第六章：MyBaits 与 Spring集成
+
+
 
 
 

@@ -43,8 +43,8 @@
     <!-- </select> -->
 
     <!-- <cache type="org.mybatis.caches.ehcache.LoggingEhcache"/> -->
-    <cache type="com.baizhiedu.cache.RedisCache"/>
-
+    <!-- <cache type="com.baizhiedu.cache.RedisCache"/> -->
+    <cache/>
     <select id="queryUserById" resultType="User" useCache="true">
         select id,name from t_user where id = #{id}
     </select>
@@ -52,6 +52,11 @@
     <select id="queryAllUsers" resultType="User" >
         select id, name from t_user
     </select>
+
+    <select id="queryAllUsersByPage" resultType="User" >
+        select id, name from t_user
+    </select>
+
 
     <update id="update" parameterType="User">
           update t_user set name=#{name} where id=#{id}

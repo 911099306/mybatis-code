@@ -41,7 +41,7 @@ public class RedisCache implements Cache {
     public void putObject(Object key, Object value) {
 
         log.info("");
-        log.info("putObject, key: {}, value: {}", key, value);
+        log.debug("putObject, key: {}, value: {}", key, value);
         Jedis jedis = JedisUtils.getJedis();
         jedis.set(SerializationUtils.serialize((Serializable) key), SerializationUtils.serialize((Serializable) value));
     }
@@ -51,7 +51,7 @@ public class RedisCache implements Cache {
      */
     @Override
     public Object getObject(Object key) {
-        log.info("getObject, key: {}", key);
+        log.debug("getObject, key: {}", key);
         Jedis jedis = JedisUtils.getJedis();
         byte[] bytes = jedis.get(SerializationUtils.serialize((Serializable) key));
         if (bytes == null) {
@@ -65,7 +65,7 @@ public class RedisCache implements Cache {
      */
     @Override
     public Object removeObject(Object key) {
-        log.info("removeObject, key: {}", key);
+        log.debug("removeObject, key: {}", key);
         Jedis jedis = JedisUtils.getJedis();
         byte[] serializeKey = SerializationUtils.serialize((Serializable) key);
         byte[] bytes = jedis.get(serializeKey);
@@ -81,7 +81,7 @@ public class RedisCache implements Cache {
      */
     @Override
     public void clear() {
-        log.info("clear...");
+        log.debug("clear...");
 
         Jedis jedis = JedisUtils.getJedis();
         jedis.flushDB();
@@ -92,7 +92,7 @@ public class RedisCache implements Cache {
      */
     @Override
     public int getSize() {
-        log.info("getSize...");
+        log.debug("getSize...");
         Jedis jedis = JedisUtils.getJedis();
         return jedis.dbSize().intValue();
     }
