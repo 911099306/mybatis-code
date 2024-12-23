@@ -30,7 +30,7 @@ public class PageHelperInterceptor1 extends MyMyBatisInterceptorAdapter{
     private static final Logger log = LoggerFactory.getLogger(PageHelperInterceptor1.class);
 
     private String queryMethodPrefix;
-    private String queryMethodsuffix;
+    private String queryMethodSuffix;
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
@@ -44,12 +44,14 @@ public class PageHelperInterceptor1 extends MyMyBatisInterceptorAdapter{
 
         // 判断是否 id 以 query 开头
         String id = mappedStatement.getId();
-        log.info("queryMethodPrefix:{}, queryMethodsuffix:{}",queryMethodPrefix,queryMethodsuffix);
+        log.info("queryMethodPrefix:{}, queryMethodSuffix:{}",queryMethodPrefix, queryMethodSuffix);
 
-        if (id.contains(queryMethodPrefix) && id.endsWith(queryMethodsuffix)) {
+        if (id.contains(queryMethodPrefix) && id.endsWith(queryMethodSuffix)) {
 
             // 获得page对象，并设置Page对象 totalSize 属性，并算出总页数
-            Page page = new Page(1);
+
+            Page page =  (Page) metaObject.getValue("target.delegate.boundSql.parameterObject");
+
 
             // 对查询条件下的数据量进行统计所有
             String countSql = "select count(*) " + sql.substring(sql.indexOf("from"));
@@ -71,7 +73,7 @@ public class PageHelperInterceptor1 extends MyMyBatisInterceptorAdapter{
             }
 
             // 查询分页数据
-            String newSql = sql + " limit " + page.getFirstItem() + " , " + page.getPageCount();
+            String newSql = sql + " limit " + page.getFirstItem() * page.getPageSize() + " , " + page.getPageCount();
             metaObject.setValue("target.delegate.boundSql.sql", newSql);
         }
 
@@ -80,7 +82,7 @@ public class PageHelperInterceptor1 extends MyMyBatisInterceptorAdapter{
 
     @Override
     public void setProperties(Properties properties) {
-        this.queryMethodsuffix = properties.getProperty("queryMethodsuffix");
+        this.queryMethodSuffix = properties.getProperty("queryMethodsuffix");
         this.queryMethodPrefix = properties.getProperty("queryMethodPrefix");
     }
 }

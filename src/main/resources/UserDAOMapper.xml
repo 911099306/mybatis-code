@@ -29,9 +29,7 @@
     <!-- <cache/> -->
 
 
-    <!-- <insert id="save" parameterType="User"> -->
-    <!--     insert into t_user (name) values (#{name}) -->
-    <!-- </insert> -->
+
 
     <!-- &lt;!&ndash;  databaseId 指定访问数据哭 &ndash;&gt; -->
     <!-- <select id="queryAll" resultType="User" databaseId="tencentYun"> -->
@@ -50,7 +48,7 @@
     </select>
 
     <select id="queryAllUsers" resultType="User" >
-        select id, name from t_user
+        select id, name ,version from t_user
     </select>
 
     <select id="queryAllUsersByPage" resultType="User" >
@@ -62,6 +60,9 @@
           update t_user set name=#{name} where id=#{id}
     </update>
 
+    <insert id="save" parameterType="User">
+        insert into t_user (name) values (#{name})
+    </insert>
 
 
 

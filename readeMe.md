@@ -1489,9 +1489,9 @@ public Object intercept(Invocation invocation) throws Throwable {
 1. 分页
 2. 乐观锁 
 
-### 分页
 
->  开发过程步骤
+
+### 开发过程步骤
 
 1. entity
 2. 别名
@@ -1502,6 +1502,8 @@ public Object intercept(Invocation invocation) throws Throwable {
 7. API
 
 
+
+### 分页
 
 #### 传统分页
 
@@ -1674,7 +1676,114 @@ public class PageHelperInterceptor1 extends MyMyBatisInterceptorAdapter{
 
 > opt2: 参数进行自定义
 
+1. 自定义 Page对象
 
+```java
+
+public class Page {
+    /**
+     * 前端 传递
+     */
+    private Integer pageIndex;
+    /**
+     * 前端 传递
+     */
+    private Integer pageCount;
+    /**
+     * 查询数据库的
+     * sql语句相关
+     * 计算在哪里完成？ 拦截器操作
+     */
+    private Integer totalSize;
+    /**
+     * 也需要计算 totalSize / pageCount  上取整
+     */
+    private Integer pageSize;
+
+    public Page(Integer pageIndex) {
+        this.pageIndex = pageIndex;
+        this.pageCount = 3;
+    }
+
+    public Page(Integer pageIndex, Integer pageCount) {
+        this.pageIndex = pageIndex;
+        this.pageCount = pageCount;
+    }
+
+    public Integer getPageIndex() {
+        return pageIndex;
+    }
+
+    public void setPageIndex(Integer pageIndex) {
+        this.pageIndex = pageIndex;
+    }
+
+    public Integer getPageCount() {
+        return pageCount;
+    }
+
+    public void setPageCount(Integer pageCount) {
+        this.pageCount = pageCount;
+    }
+
+    public Integer getTotalSize() {
+        return totalSize;
+    }
+
+    public void setTotalSize(Integer totalSize) {
+        this.totalSize = totalSize;
+        if (totalSize % pageCount == 0) {
+            this.pageSize = totalSize / pageCount;
+        } else {
+            this.pageSize = totalSize / pageCount + 1;
+        }
+    }
+
+    public Integer getPageSize() {
+        return pageSize;
+    }
+
+    public void setPageSize(Integer pageSize) {
+        this.pageSize = pageSize;
+    }
+
+    /**
+     * limit getFirstItem,pageSize;
+     */
+    public Integer getFirstItem() {
+        return pageIndex - 1;
+    }
+}
+
+```
+
+2. 在调用方法时，将page作为参数传入
+
+![image-20241223171217190](readeME/image-20241223171217190.png)
+
+![image-20241223171342883](readeME/image-20241223171342883.png)
+
+**缺点：**
+
+1. 当查询条件存在多个参数的时候，比较麻烦
+
+![image-20241223171523778](readeME/image-20241223171523778.png)
+
+2. 整个分层开发中，每个层次都需要通过参数对Page进行传递，导致程序更为复杂
+
+   controller -> service -> dao -> interceptor
+
+   
+
+> opt3:  使用**ThreadLocal**进行保存page对象，避免一层一层的参数传递
+
+  正好个分层开发中，用户的一个请求，相当于一个线程，完成的就是一个操作。
+
+ 
+
+当一个分层设计中，每一阶段都需要一个参数的时候，就可以将这个参数放入线程内，而不是一直作为参数向下传递
+
+![image-20241223172746660](readeME/image-20241223172746660.png)
 
 
 
@@ -1682,95 +1791,213 @@ public class PageHelperInterceptor1 extends MyMyBatisInterceptorAdapter{
 
 ### 乐观锁
 
+**概念：**保证多用户并发访问过程中，程序安全的一种机制
 
+> 数据库中的锁：
 
+- **悲观锁**：数据库底层提供的最**安全**的 保证数据库 并发的方式
 
+  ​	手工控制事务
 
+  - insert update delete 自动完成
 
+  - select * from t_user where id = 4 for update    必须额外引入 for update
+  - **优点：**安全性高
+  - **缺点：**并发访问的效率的降低     
 
+-    **乐观锁**：应用锁 不涉及到数据库 底层真的为数据加锁
 
+  - **优点：**并发效率高
+  - **缺点：**安全性低 
 
+> 乐观锁会在那几步进行修改？
 
+1. **entity：**增加versions属性
+2. **表**：增加vers 字段 （version可能是关键字）
 
 
 
+> 如何改造乐观锁呢？
 
+1. 保证 vers列 初始值为0
+       插入操作时 sql insert vers = 0 
+2. 每次更新的过程中把对象中version属性 与 表中 vers 对比
+   1. 获得对象version属性值
+   2. 查询数据库 当前这样数据 vers的值 
 
-----
+3. 如果值一致进行更新操作并且 vers+1
+4.  如果值不一致，抛出异常 
 
-# 第六章：MyBaits 与 Spring集成
 
 
+#### 核心代码
 
+```java
+  @Override
+    public Object intercept(Invocation invocation) throws Throwable {
 
+        log.info("----------PageHelperInterceptorLock------------");
 
+        // 获得 SQL 语句，拼接  比较 version
+        MetaObject metaObject = SystemMetaObject.forObject(invocation);
+        String sql = (String) metaObject.getValue("target.delegate.boundSql.sql");
+        MappedStatement mappedStatement = (MappedStatement) metaObject.getValue("target.delegate.mappedStatement");
 
+        // 判断是否 id 以 query 开头
+        String id = mappedStatement.getId();
 
----
+        /*
+         * 保存操作， version = 0
+         *
+         * 现有的sql： insert into t_user (name) values (#{name});
+         * 需要实现的： insert into t_user (name, version) values (#{name}, #{version});
+         *
+         * 如何实现获取现有的sql：
+         *      metaObject.getValue("target.delegate.boundSql.sql");
+         * 如何对sql进行改造？
+         *      拆串解串  jsqlparser
+         *
+         */
+        if (id.contains("save")) {
+            CCJSqlParserManager parserManager = new CCJSqlParserManager();
+            Insert insert = (Insert) parserManager.parse(new StringReader(sql));
 
+            // 列名
+            List<Column> columns = insert.getColumns();
+            columns.add(new Column("version"));
+            insert.setColumns(columns);
 
+            // 列值
+            // 插入的列 version  对应的默认值 0
+            ExpressionList itemsList = (ExpressionList) insert.getItemsList();
+            List<Expression> expressions = itemsList.getExpressions();
+            expressions.add(new LongValue(0));
+            insert.setSetExpressionList(expressions);
 
 
+            System.out.println();
 
-# 第七章：
+            // 将mybatis 执行的sql语句替换成新的
+            metaObject.setValue("target.delegate.boundSql.sql", insert.toString());
+        }
 
+         /**
+         * sql = update xxx set xxx=xxx , version = version + 1 where id = ?
+         * 更新操作，比较 version 与数据库中的version 是否相同
+         *
+         * 不相同，存在并发，当前线程的数据不是最新的数据，不可以进行更新了
+         * 相同，进行更新操作的同时 将 version + 1
+         */
+        if (id.contains("update")) {
 
+            // jsqlparser 解析sql 获得表明以及vers 属性
+            CCJSqlParserManager parserManager = new CCJSqlParserManager();
+            Update update = (Update) parserManager.parse(new StringReader(sql));
+            // 操作的表明
+            Table table = update.getTable();
+            String tableNam = table.getName();
 
+            // 更新的记录id
+            Integer rowId = (Integer) metaObject.getValue("target.delegate.parameterHandler.parameterObject.id");
+            Integer version = (Integer) metaObject.getValue("target.delegate.parameterHandler.parameterObject.version");
 
 
----
+            Connection conn = (Connection) invocation.getArgs()[0];
 
+            String selectSql = "select version from " + tableNam + " where id = ?";
+            PreparedStatement preparedStatement = conn.prepareStatement(selectSql);
 
+            preparedStatement.setInt(1, rowId);
 
+            ResultSet resultSet = preparedStatement.executeQuery();
 
+            int vers = 0;
 
-# 第八章：
+            if (resultSet.next()) {
+                vers = resultSet.getInt(1);
+            }
 
 
 
+            // mybatis 进行更新的时候，User对象参数传入， ---> version 上一步的vers 进行比较
 
+            // 不同，抛出异常， 更新失败
+            if (vers != version) {
+                throw new RuntimeException("版本不一致");
+            } else {
+                // 相同 version + 1 ， 进行数据库更新
+                // 列名
+                List<Column> columns = update.getColumns();
+                columns.add(new Column("version"));
+                update.setColumns(columns);
 
----
+                // 列值
+                // 更新的列 version + 1
+                List<Expression> expressions = update.getExpressions();
+                expressions.add(new LongValue(version + 1));
+                update.setExpressions(expressions);
 
+                metaObject.setValue("target.delegate.boundSql.sql", update.toString());
 
 
+            }
+        }
 
 
-# 第九章：
+        return invocation.proceed();
+    }
+```
 
+![image-20241223201632075](readeME/image-20241223201632075.png)
 
 
 
+**缺点：**
 
+当前查询version 与 后续比较更新操作，中间存在并发，可能产生错误
 
+> opt 将比较version的操作，放到sql中，交由db进行比较
+>
+> update t_user set name=? ,vers=vers+1 where id = ? and vers=version
 
----
+但是，这种仍不能保证100% 保证并发安全
 
 
 
 
 
-# 第十章：
 
 
+## SQL 解析工具
 
+**jsqlparser**
 
+```xml
+<dependency>
+    <groupId>com.github.jsqlparser</groupId>
+    <artifactId>jsqlparser</artifactId>
+    <version>3.1</version>
+</dependency>
 
+```
 
+![image-20241223180609944](readeME/image-20241223180609944.png)
 
----
 
 
 
 
 
-# 十一章：
 
 
 
+## 总结
 
 
-----
+
+
+
+
 
 
 
